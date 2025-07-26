@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Bank Application{% endblock %}
+
+{% block extra_js %}
+<script>
+    // This will be used by Socket.IO to update the UI in real-time
+    document.addEventListener('DOMContentLoaded', function() {
+        // Update account balance when receiving real-time updates
+        const updateAccountBalance = (accountNumber, newBalance) => {
+            const balanceElement = document.querySelector(`.account-balance[data-account='${accountNumber}']`);
+            if (balanceElement) {
+                balanceElement.textContent = '₹' + parseFloat(newBalance).toFixed(2);
+            }
+            
+            // Update total balance
+            const totalBalanceElement = document.getElementById('total-balance');
+            if (totalBalanceElement) {
+                // Recalculate total balance
+                let total = 0;
+                document.querySelectorAll('.account-balance').forEach(el => {
+                    const balance = parseFloat(el.textContent.replace('₹', '').replace(/,/g, ''));
+                    if (!isNaN(balance)) {
+                        total += balance;
+                    }
+                });
+                totalBalanceElement.textContent = '₹' + total.toFixed(2);
+            }
+        };
+
+        // Listen for balance updates
+        if (typeof socket !== 'undefined') {
+            socket.on('balance_update', function(data) {
+                updateAccountBalance(data.account_number, data.new_balance);
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Welcome Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-home me-2"></i>Welcome, {{ user.full_name }}!
+            </h2>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1" id="total-balance">₹{{ "%.2f"|format(total_balance) }}</h4>
+                        <p class="mb-0">Total Balance</p>
+                    </div>
+                    <i class="fas fa-dollar-sign fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">{{ accounts|length }}</h4>
+                        <p class="mb-0">Total Accounts</p>
+                    </div>
+                    <i class="fas fa-credit-card fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">{{ transactions|length }}</h4>
+                        <p class="mb-0">Recent Transactions</p>
+                    </div>
+                    <i class="fas fa-history fa-2x"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1">Quick Actions</h4>
+                        <p class="mb-0">Transfer | UPI | History</p>
+                    </div>
+                    <i class="fas fa-bolt fa-2x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accounts and Transactions -->
+    <div class="row">
+        <!-- Bank Accounts -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Your Accounts</h5>
+                </div>
+                <div class="card-body">
+                    {% if accounts %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Account Number</th>
+                                        <th>Type</th>
+                                        <th>Balance</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for account in accounts %}
+                                    <tr>
+                                        <td><code>{{ account.account_number }}</code></td>
+                                        <td>
+                                            <span class="badge bg-primary">{{ account.account_type }}</span>
+                                        </td>
+                                        <td>
+                                            <strong class="account-balance" data-account="{{ account.account_number }}">
+                                                ₹{{ "%.2f"|format(account.balance) }}
+                                            </strong>
+                                        </td>
+                                        <td>
+                                            <form action="{{ url_for('delete_account', account_number=account.account_number) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this account? This will also delete all transactions for this account.');" style="display: inline;">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No accounts found</p>
+                            <a href="{{ url_for('add_account') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add Account
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Transactions -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    {% if transactions %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if transaction.amount > 0 else 'danger' }}">
+                                                {{ transaction.transaction_type }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span class="text-{{ 'success' if transaction.amount > 0 else 'danger' }}">
+                                                ₹{{ "%.2f"|format(transaction.amount) }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('transactions') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-eye me-2"></i>View All Transactions
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No transactions found</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <a href="{{ url_for('add_account') }}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-plus-circle me-2"></i>Add Account
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('transfer') }}" class="btn btn-outline-success w-100 mb-2">
+                                <i class="fas fa-exchange-alt me-2"></i>Transfer Money
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('upi_payment') }}" class="btn btn-outline-info w-100 mb-2">
+                                <i class="fas fa-mobile-alt me-2"></i>UPI Payment
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ url_for('transactions') }}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-history me-2"></i>View History
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

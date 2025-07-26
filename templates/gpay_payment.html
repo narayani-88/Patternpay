@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}GPay - PatternPay{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gpay.css') }}">
+<style>
+    .user-list {
+        max-height: 300px;
+        overflow-y: auto;
+        margin: 15px 0;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+    }
+    .user-item {
+        padding: 12px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        transition: background-color 0.2s;
+    }
+    .user-item:hover {
+        background-color: #f8f9fa;
+    }
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: #e3f2fd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+        color: #1976d2;
+        font-weight: bold;
+    }
+    .user-details {
+        flex: 1;
+    }
+    .user-name {
+        font-weight: 500;
+        color: #202124;
+        margin-bottom: 2px;
+    }
+    .user-upi {
+        font-size: 13px;
+        color: #5f6368;
+    }
+    .error-message {
+        color: #d32f2f;
+        font-size: 12px;
+        margin-top: 4px;
+    }
+    .gpay-amount-input {
+        border: none;
+        outline: none;
+        width: 100%;
+        font-size: 32px;
+        font-weight: 500;
+        text-align: center;
+        background: transparent;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gpay-app">
+    <!-- GPay Header -->
+    <div class="gpay-header">
+        <div class="gpay-header-content">
+            <a href="{{ url_for('upi_payment') }}" class="gpay-back-button">
+                <i class="fas fa-arrow-left"></i>
+            </a>
+            <div class="gpay-header-title">
+                <span>Send</span>
+            </div>
+            <div class="gpay-header-actions">
+                <button type="button" class="gpay-header-action" title="Scan QR code">
+                    <i class="fas fa-qrcode"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Card -->
+    <div class="gpay-card">
+        <div class="gpay-card-content">
+            <form method="POST" action="{{ url_for('mock_gpay') }}" id="gpayForm" class="gpay-form">
+                <div class="gpay-amount-section">
+                    <div class="gpay-amount-container">
+                        <span class="gpay-currency">₹</span>
+                        <input type="number" 
+                               id="amount" 
+                               name="amount" 
+                               value="{{ amount if amount != 'None' else '' }}" 
+                               placeholder="0" 
+                               step="0.01" 
+                               min="0.01" 
+                               required
+                               class="gpay-amount-input">
+                    </div>
+                    <div class="gpay-amount-hint">
+                        Available: ₹<span id="availableBalance">{{ '%.2f'|format(current_user_balance) if current_user_balance else '0.00' }}</span>
+                    </div>
+                </div>
+
+                <div class="gpay-input-group">
+                    <label for="upi_id">To</label>
+                    <div class="gpay-input-with-icon">
+                        <i class="fas fa-user"></i>
+                        <input type="text" 
+                               id="upi_id" 
+                               name="upi_id" 
+                               value="{{ upi_id if upi_id != 'None' else '' }}" 
+                               placeholder="Enter UPI ID or select a contact"
+                               required>
+                    </div>
+                    <div class="error-message" id="upiError"></div>
+                </div>
+
+                <div class="gpay-input-group">
+                    <label for="purpose">What's it for? (Optional)</label>
+                    <input type="text" 
+                           id="purpose" 
+                           name="purpose" 
+                           placeholder="e.g., Lunch, Rent, etc.">
+                </div>
+
+                <!-- User List -->
+                <div class="user-list">
+                    {% for user in users %}
+                    <div class="user-item" onclick="selectUser('{{ user.email }}', '{{ user.full_name }}')">
+                        <div class="user-avatar">{{ user.full_name[0]|upper if user.full_name else user.username[0]|upper }}</div>
+                        <div class="user-details">
+                            <div class="user-name">{{ user.full_name if user.full_name else user.username }}</div>
+                            <div class="user-upi">{{ user.email }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="gpay-button" id="payButton">
+                    <i class="fas fa-lock"></i> Pay Securely
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-5">
+                <div class="text-success mb-3" style="font-size: 4rem;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h4 id="successMessage">Payment Successful!</h4>
+                <p id="transactionDetails" class="text-muted"></p>
+                <div class="d-grid gap-2 mt-4">
+                    <a href="{{ url_for('transactions') }}" class="btn btn-primary">View Transactions</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-5">
+                <div class="text-danger mb-3" style="font-size: 4rem;">
+                    <i class="fas fa-times-circle"></i>
+                </div>
+                <h4>Payment Failed</h4>
+                <p id="errorMessage" class="text-muted"></p>
+                <div class="d-grid gap-2 mt-4">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Try Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('gpayForm');
+    const upiInput = document.getElementById('upi_id');
+    const amountInput = document.getElementById('amount');
+    const payButton = document.getElementById('payButton');
+    const availableBalance = document.getElementById('availableBalance');
+    const upiError = document.getElementById('upiError');
+    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
+    const successMessage = document.getElementById('successMessage');
+    const transactionDetails = document.getElementById('transactionDetails');
+    const errorMessage = document.getElementById('errorMessage');
+
+    // Handle form submission
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        // Validate form
+        if (!validateForm()) {
+            return;
+        }
+
+        // Show loading state
+        const originalButtonText = payButton.innerHTML;
+        payButton.disabled = true;
+        payButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+
+        try {
+            const formData = new FormData(form);
+            const response = await fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Update UI with new balance
+                if (result.data && result.data.new_balance) {
+                    availableBalance.textContent = parseFloat(result.data.new_balance).toFixed(2);
+                }
+                
+                // Show success message
+                successMessage.textContent = 'Payment Successful!';
+                transactionDetails.innerHTML = `
+                    <div class="alert alert-success">
+                        <p class="mb-1">${result.message}</p>
+                        <p class="mb-0">Your new balance: ₹${parseFloat(availableBalance.textContent).toFixed(2)}</p>
+                    </div>
+                `;
+                successModal.show();
+                
+                // Reset form
+                form.reset();
+            } else {
+                // Show error message
+                errorMessage.textContent = result.error || result.message || 'An error occurred. Please try again.';
+                errorModal.show();
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            errorMessage.textContent = 'Failed to process payment. Please try again.';
+            errorModal.show();
+        } finally {
+            // Reset button state
+            payButton.disabled = false;
+            payButton.innerHTML = originalButtonText;
+        }
+    });
+
+    // Form validation
+    function validateForm() {
+        let isValid = true;
+        
+        // Reset errors
+        upiError.textContent = '';
+        upiInput.classList.remove('is-invalid');
+        amountInput.classList.remove('is-invalid');
+        
+        // Validate UPI ID
+        if (!upiInput.value || !upiInput.value.includes('@')) {
+            upiError.textContent = 'Please enter a valid UPI ID';
+            upiInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        // Validate amount
+        const amount = parseFloat(amountInput.value);
+        if (isNaN(amount) || amount <= 0) {
+            amountInput.classList.add('is-invalid');
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+
+    // Function to select a user from the list
+    window.selectUser = function(upi, name) {
+        upiInput.value = upi;
+        upiError.textContent = '';
+        upiInput.classList.remove('is-invalid');
+        
+        // Optional: Focus on amount field after selecting a user
+        amountInput.focus();
+    };
+});
+</script>
+{% endblock %}

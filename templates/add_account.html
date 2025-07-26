@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Add Account - PatternPay{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add New Bank Account</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="account_type" class="form-label">Account Type</label>
+                            <select class="form-select" id="account_type" name="account_type" required>
+                                <option value="">Select account type</option>
+                                <option value="Savings">Savings Account</option>
+                                <option value="Current">Current Account</option>
+                                <option value="Fixed Deposit">Fixed Deposit</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="bank_name" class="form-label">Bank Name</label>
+                            <select class="form-select" id="bank_name" name="bank_name" required>
+                                <option value="">Select bank</option>
+                                <option value="State Bank of India">State Bank of India (SBI)</option>
+                                <option value="HDFC Bank">HDFC Bank</option>
+                                <option value="ICICI Bank">ICICI Bank</option>
+                                <option value="Axis Bank">Axis Bank</option>
+                                <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
+                                <option value="Punjab National Bank">Punjab National Bank</option>
+                                <option value="Bank of Baroda">Bank of Baroda</option>
+                                <option value="Canara Bank">Canara Bank</option>
+                                <option value="Union Bank of India">Union Bank of India</option>
+                                <option value="Yes Bank">Yes Bank</option>
+                                <option value="IDFC FIRST Bank">IDFC FIRST Bank</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="initial_balance" class="form-label">Initial Balance</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="initial_balance" name="initial_balance" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-plus me-2"></i>Add Account
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

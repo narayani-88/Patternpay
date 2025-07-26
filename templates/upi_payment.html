@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}UPI Payment - PatternPay{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex align-items-center">
+                    <i class="fas fa-mobile-alt me-2"></i>
+                    <span>UPI Payment</span>
+                </div>
+                <div class="card-body">
+                    <!-- GPay Button -->
+                    <div class="text-center mb-4">
+                        <a href="{{ url_for('mock_gpay') }}" class="btn btn-outline-primary btn-lg w-100 mb-3 d-flex align-items-center justify-content-center" style="border: 2px solid #1a73e8; color: #1a73e8; font-weight: 500; padding: 12px; border-radius: 8px;">
+                            <img src="https://www.gstatic.com/instantbuy/svg/dark_gpay.svg" alt="GPay" style="height: 24px; margin-right: 12px;">
+                            <span>Pay with Google Pay</span>
+                        </a>
+                        <div class="divider my-4 d-flex align-items-center">
+                            <div class="border-top flex-grow-1"></div>
+                            <span class="px-3 text-muted">OR</span>
+                            <div class="border-top flex-grow-1"></div>
+                        </div>
+                    </div>
+
+                    <!-- Standard UPI Form -->
+                    <form method="POST" action="{{ url_for('upi_payment') }}">
+                        <div class="mb-3">
+                            <label for="upi_id" class="form-label">UPI ID</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-at"></i></span>
+                                <input type="text" class="form-control" id="upi_id" name="upi_id" 
+                                       placeholder="name@bank" required>
+                            </div>
+                            <div class="form-text">Enter a valid UPI ID (e.g., name@bank)</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       placeholder="0.00" step="0.01" min="0.01" required>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-paper-plane me-2"></i>Send Payment
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* GPay Button Styles */
+.gpay-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #000000;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 24px 8px 12px;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+}
+
+.gpay-button:hover {
+    background-color: #3c4043;
+    transform: translateY(-1px);
+    box-shadow: 0 1px 3px 0 rgba(60,64,67,0.302), 0 4px 8px 3px rgba(60,64,67,0.149);
+}
+
+.gpay-button:active {
+    background-color: #3c4043;
+    transform: translateY(0);
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+.gpay-logo {
+    height: 24px;
+    margin-right: 12px;
+}
+
+/* Divider */
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #5f6368;
+    font-size: 14px;
+    margin: 16px 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #dadce0;
+}
+
+.divider:not(:empty)::before {
+    margin-right: 0.75em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: 0.75em;
+}
+
+/* Form Styles */
+.form-control:focus {
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 0.25rem rgba(26, 115, 232, 0.25);
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
+}
+
+/* Card Styles */
+.card {
+    border: none;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+}
+
+.card-header {
+    font-weight: 500;
+    font-size: 1.1rem;
+    padding: 12px 16px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 576px) {
+    .card {
+        margin: 0 -15px;
+        border-radius: 0;
+    }
+    
+    .gpay-button {
+        max-width: 100%;
+    }
+}
+</style>
+{% endblock %}

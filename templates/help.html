@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Help - Bank Application{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Help & Support</h2>
+    <p>If you need assistance, please contact our support team:</p>
+    <ul>
+        <li>Email: <a href="mailto:support@bankapp.com">support@bankapp.com</a></li>
+        <li>Phone: +1-800-123-4567</li>
+    </ul>
+    <p>Our support team is available Monday to Friday, 9:00 AM to 6:00 PM.</p>
+    <p>For common questions, please visit our <a href="{{ url_for('faq') }}">FAQ</a> page.</p>
+</div>
+{% endblock %} 

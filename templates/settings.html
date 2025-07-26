@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Bank Application{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-cog me-2"></i>Settings</h2>
+        </div>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-sliders-h me-2"></i>Preferences</h5>
+                </div>
+                <div class="card-body">
+                    <form>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="notifications">
+                            <label class="form-check-label" for="notifications">Enable Notifications</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="twofactor">
+                            <label class="form-check-label" for="twofactor">Two-Factor Authentication</label>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="autologout">
+                            <label class="form-check-label" for="autologout">Auto Logout (30 minutes)</label>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-primary" disabled>
+                                <i class="fas fa-save me-2"></i>Save Settings
+                            </button>
+                        </div>
+                        <div class="form-text mt-2 text-muted">
+                            (Settings are for demo only and not saved in this version)
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <!-- PIN Management Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-key me-2"></i>Manage Security PIN</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('set_pin') }}">
+                        <div class="mb-3">
+                            <label for="pin" class="form-label">Create/Update PIN</label>
+                            <input type="password" class="form-control" id="pin" name="pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Enter 4-6 digit PIN">
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirm_pin" class="form-label">Confirm PIN</label>
+                            <input type="password" class="form-control" id="confirm_pin" name="confirm_pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Re-enter PIN">
+                        </div>
+                        <button type="submit" class="btn btn-success">Save PIN</button>
+                    </form>
+                    <hr>
+                    <button class="btn btn-link mt-2" type="button" data-bs-toggle="collapse" data-bs-target="#forgotPinCollapse" aria-expanded="false" aria-controls="forgotPinCollapse">
+                        Forgot PIN?
+                    </button>
+                    <div class="collapse" id="forgotPinCollapse">
+                        <form method="POST" action="{{ url_for('reset_pin') }}" class="mt-3">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Verify Password</label>
+                                <input type="password" class="form-control" id="password" name="password" required placeholder="Enter your account password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_pin" class="form-label">New PIN</label>
+                                <input type="password" class="form-control" id="new_pin" name="new_pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Enter new 4-6 digit PIN">
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_new_pin" class="form-label">Confirm New PIN</label>
+                                <input type="password" class="form-control" id="confirm_new_pin" name="confirm_new_pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Re-enter new PIN">
+                            </div>
+                            <button type="submit" class="btn btn-warning">Reset PIN</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

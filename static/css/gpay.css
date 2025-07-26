@@ -1,0 +1,384 @@
+/* GPay App Container */
+.gpay-app {
+    max-width: 100%;
+    min-height: 100vh;
+    margin: 0 auto;
+    background-color: #f8f9fa;
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    color: #202124;
+    position: relative;
+    overflow-x: hidden;
+    padding-bottom: 20px;
+}
+
+/* Header Styles */
+.gpay-header {
+    background-color: white;
+    color: #202124;
+    padding: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.1);
+    margin-bottom: 8px;
+}
+
+.gpay-header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 600px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.gpay-back-button {
+    color: #5f6368;
+    font-size: 20px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.gpay-back-button:active {
+    background-color: rgba(60, 64, 67, 0.08);
+}
+
+.gpay-header-title {
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    pointer-events: none;
+    font-size: 18px;
+    font-weight: 500;
+}
+
+.gpay-header-actions {
+    margin-left: auto;
+}
+
+.gpay-header-action {
+    background: none;
+    border: none;
+    color: #1a73e8;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 20px;
+}
+
+/* Card Styles */
+.gpay-card {
+    background-color: white;
+    border-radius: 16px;
+    margin: 0 16px 16px;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.1), 0 1px 3px 1px rgba(60,64,67,0.1);
+    overflow: hidden;
+}
+
+.gpay-card-content {
+    padding: 16px 16px 24px;
+}
+
+/* Amount Section */
+.gpay-amount-section {
+    padding: 16px 0;
+    text-align: center;
+}
+
+.gpay-amount-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.gpay-currency {
+    font-size: 40px;
+    font-weight: 400;
+    color: #5f6368;
+    margin-right: 4px;
+    transform: translateY(-2px);
+}
+
+.gpay-amount-input {
+    font-size: 40px;
+    font-weight: 400;
+    border: none;
+    outline: none;
+    text-align: center;
+    width: 200px;
+    padding: 0;
+    color: #202124;
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    background: transparent;
+}
+
+.gpay-amount-input::placeholder {
+    color: #9aa0a6;
+}
+
+.gpay-amount-hint {
+    font-size: 14px;
+    color: #5f6368;
+    margin-top: 8px;
+}
+
+/* Divider */
+.gpay-divider {
+    height: 1px;
+    background-color: #e0e0e0;
+    margin: 8px 0 16px;
+}
+
+/* Form Styles */
+.gpay-form {
+    padding-top: 8px;
+}
+
+.gpay-input-group {
+    margin-bottom: 16px;
+}
+
+.gpay-input-label {
+    display: block;
+    font-size: 14px;
+    color: #5f6368;
+    margin-bottom: 8px;
+}
+
+.gpay-input-field {
+    position: relative;
+    padding-bottom: 4px;
+}
+
+.gpay-upi-input,
+.gpay-purpose-input {
+    width: 100%;
+    border: none;
+    outline: none;
+    font-size: 16px;
+    padding: 8px 0;
+    color: #202124;
+    font-family: 'Google Sans', Roboto, Arial, sans-serif;
+    background: transparent;
+}
+
+.gpay-upi-input::placeholder,
+.gpay-purpose-input::placeholder {
+    color: #9aa0a6;
+}
+
+.gpay-input-underline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: #dadce0;
+    transition: all 0.2s;
+}
+
+.gpay-upi-input:focus + .gpay-input-underline,
+.gpay-purpose-input:focus + .gpay-input-underline {
+    height: 2px;
+    background-color: #1a73e8;
+}
+
+/* Error State */
+.gpay-upi-input.error,
+.gpay-amount-input.error {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+}
+
+/* Pay Button */
+.gpay-pay-button {
+    width: 100%;
+    height: 48px;
+    background-color: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 24px 0 0;
+    padding: 0 24px;
+    box-shadow: 0 1px 3px 0 rgba(66,133,244,0.3), 0 1px 1px 0 rgba(66,133,244,0.2);
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.gpay-pay-button:active {
+    background-color: #1557b0;
+    box-shadow: 0 1px 2px 0 rgba(66,133,244,0.3), 0 1px 3px 1px rgba(66,133,244,0.15);
+    transform: translateY(1px);
+}
+
+.gpay-pay-button:disabled {
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    opacity: 0.8;
+}
+
+.gpay-button-icon {
+    margin-left: 8px;
+    display: flex;
+    align-items: center;
+}
+
+/* Spinner */
+.gpay-spinner {
+    position: absolute;
+    right: 16px;
+    display: none;
+}
+
+.gpay-spinner-circle {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Recent Section */
+.gpay-recent-section {
+    background-color: white;
+    border-radius: 16px;
+    margin: 0 16px;
+    box-shadow: 0 1px 2px 0 rgba(60,64,67,0.1), 0 1px 3px 1px rgba(60,64,67,0.1);
+    overflow: hidden;
+}
+
+.gpay-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 16px 12px;
+}
+
+.gpay-section-header span {
+    font-size: 14px;
+    font-weight: 500;
+    color: #5f6368;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gpay-see-all {
+    background: none;
+    border: none;
+    color: #1a73e8;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.gpay-see-all:active {
+    background-color: rgba(26, 115, 232, 0.08);
+}
+
+/* Recent Item */
+.gpay-recent-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.gpay-recent-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e8f0fe;
+    color: #1a73e8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+}
+
+.gpay-recent-details {
+    flex: 1;
+}
+
+.gpay-recent-name {
+    font-size: 16px;
+    color: #202124;
+    margin-bottom: 2px;
+}
+
+.gpay-recent-upi {
+    font-size: 14px;
+    color: #5f6368;
+}
+
+.gpay-recent-amount {
+    font-size: 14px;
+    color: #202124;
+    font-weight: 500;
+}
+
+/* Responsive Adjustments */
+@media (min-width: 600px) {
+    .gpay-app {
+        max-width: 600px;
+        margin: 0 auto;
+        box-shadow: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        min-height: 100vh;
+    }
+    
+    .gpay-header,
+    .gpay-card,
+    .gpay-recent-section {
+        margin-left: 0;
+        margin-right: 0;
+        border-radius: 0;
+    }
+    
+    .gpay-card {
+        border-radius: 16px;
+        margin: 0 16px 16px;
+    }
+    
+    .gpay-amount-input {
+        width: 300px;
+    }
+}
+
+/* Animation for page transition */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gpay-app {
+    animation: fadeIn 0.3s ease-out forwards;
+}

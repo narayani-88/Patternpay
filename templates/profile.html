@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Bank Application{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-user me-2"></i>User Profile</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>Personal Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Full Name:</strong></div>
+                        <div class="col-sm-8">{{ user.full_name }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Email:</strong></div>
+                        <div class="col-sm-8">{{ user.email }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Username:</strong></div>
+                        <div class="col-sm-8">{{ user.username }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Member Since:</strong></div>
+                        <div class="col-sm-8">{{ user.created_at.strftime('%Y-%m-%d') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Account Summary</h5>
+                </div>
+                <div class="card-body">
+                    {% if accounts|length > 1 %}
+                        <div class="mb-3">
+                            <label for="accountSelect" class="form-label"><strong>Select Account:</strong></label>
+                            <select id="accountSelect" class="form-select">
+                                {% for account in accounts %}
+                                    <option value="{{ account.account_number }}" data-balance="{{ '%.2f'|format(account.balance) }}">
+                                        {{ account.account_number }} ({{ account.account_type }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Selected Account Balance:</strong>
+                            <span id="selectedBalance">₹{{ '%.2f'|format(accounts[0].balance) }}</span>
+                        </div>
+                        <div class="mb-3">
+                            <strong>Total Accounts:</strong> {{ accounts|length }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Total Balance:</strong> ₹{{ '%.2f'|format(accounts|sum(attribute='balance')) }}
+                        </div>
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                var select = document.getElementById('accountSelect');
+                                var balanceSpan = document.getElementById('selectedBalance');
+                                select.addEventListener('change', function() {
+                                    var selectedOption = select.options[select.selectedIndex];
+                                    var balance = selectedOption.getAttribute('data-balance');
+                                    balanceSpan.textContent = '₹' + balance;
+                                });
+                            });
+                        </script>
+                    {% else %}
+                        <div class="mb-3">
+                            <strong>Account Number:</strong> {{ accounts[0].account_number if accounts else '' }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Account Balance:</strong> ₹{{ '%.2f'|format(accounts[0].balance) if accounts else '0.00' }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Total Accounts:</strong> {{ accounts|length }}
+                        </div>
+                        <div class="mb-3">
+                            <strong>Total Balance:</strong> ₹{{ '%.2f'|format(accounts|sum(attribute='balance')) }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

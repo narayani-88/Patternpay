@@ -1,0 +1,17 @@
+Flask==2.3.2
+Flask-PyMongo==2.3.0
+Flask-SocketIO==5.3.4
+python-socketio==5.8.0
+python-engineio==4.5.1
+eventlet==0.33.3
+
+pymongo[srv]==4.5.0
+
+# Built-in libraries used:
+# - tkinter (GUI framework)
+# - json (data storage)
+# - os (file operations)
+# - datetime (date/time handling)
+# - random (account number generation)
+
+python-dotenv==1.0.0

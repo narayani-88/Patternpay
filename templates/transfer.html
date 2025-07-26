@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Transfer - Bank Application{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Bank Transfer</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="from_account" class="form-label">From Account</label>
+                            <select class="form-select" id="from_account" name="from_account" required>
+                                <option value="">Select your account</option>
+                                {% for account in accounts %}
+                                <option value="{{ account.account_number }}">
+                                    {{ account.account_number }} ({{ account.account_type }}) - ₹{{ "%.2f"|format(account.balance) }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="to_account" class="form-label">To Account Number</label>
+                            <input type="text" class="form-control" id="to_account" name="to_account" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">₹</span>
+                                <input type="number" class="form-control" id="amount" name="amount" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="pin" class="form-label">Enter PIN</label>
+                            <input type="password" class="form-control" id="pin" name="pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Enter your 4-6 digit PIN">
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-exchange-alt me-2"></i>Transfer
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

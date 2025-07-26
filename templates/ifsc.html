@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}IFSC Info - Bank Application{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2><i class="fas fa-info-circle me-2"></i>Account IFSC Information</h2>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-university me-2"></i>Bank Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Bank Name:</strong></div>
+                        <div class="col-sm-8">{{ accounts[0].bank_name if accounts else 'N/A' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>IFSC Code:</strong></div>
+                        <div class="col-sm-8">{{ 'KKBK0000001' if accounts and accounts[0].bank_name=='Kotak Mahindra Bank' else 'IFSC0000000' }}</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Branch:</strong></div>
+                        <div class="col-sm-8">Main Branch</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Address:</strong></div>
+                        <div class="col-sm-8">123 Main Street, City, State</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Phone:</strong></div>
+                        <div class="col-sm-8">+1-234-567-8900</div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-sm-4"><strong>Email:</strong></div>
+                        <div class="col-sm-8">info@samplebank.com</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Your Accounts</h5>
+                </div>
+                <div class="card-body">
+                    {% if accounts %}
+                        {% for account in accounts %}
+                        <div class="border-bottom pb-3 mb-3">
+                            <div class="row">
+                                <div class="col-sm-6"><strong>Account:</strong></div>
+                                <div class="col-sm-6"><code>{{ account.account_number }}</code></div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-6"><strong>Type:</strong></div>
+                                <div class="col-sm-6">{{ account.account_type }}</div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-6"><strong>Balance:</strong></div>
+                                <div class="col-sm-6">₹{{ "%.2f"|format(account.balance) }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No accounts found</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
