@@ -11,10 +11,10 @@
                     <h4 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>Bank Transfer</h4>
                 </div>
                 <div class="card-body">
-                    <form method="POST">
+                    <form id="transferForm" method="POST">
                         <div class="mb-3">
                             <label for="from_account" class="form-label">From Account</label>
-                            <select class="form-select" id="from_account" name="from_account" required>
+                            <select class="form-select" id="from_account" name="from_account" autocomplete="account" required>
                                 <option value="">Select your account</option>
                                 {% for account in accounts %}
                                 <option value="{{ account.account_number }}">
@@ -25,22 +25,22 @@
                         </div>
                         <div class="mb-3">
                             <label for="to_account" class="form-label">To Account Number</label>
-                            <input type="text" class="form-control" id="to_account" name="to_account" required>
+                            <input type="text" class="form-control" id="to_account" name="to_account" autocomplete="off" required>
                         </div>
                         <div class="mb-3">
                             <label for="amount" class="form-label">Amount</label>
                             <div class="input-group">
                                 <span class="input-group-text">₹</span>
                                 <input type="number" class="form-control" id="amount" name="amount" 
-                                       step="0.01" min="0" required>
+                                       step="0.01" min="0" autocomplete="transaction-amount" required>
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="pin" class="form-label">Enter PIN</label>
-                            <input type="password" class="form-control" id="pin" name="pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" required placeholder="Enter your 4-6 digit PIN">
+                            <input type="password" class="form-control" id="pin" name="pin" minlength="4" maxlength="6" pattern="[0-9]{4,6}" autocomplete="current-pin" required placeholder="Enter your 4-6 digit PIN">
                         </div>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">
+                            <button type="submit" class="btn btn-primary" id="transferButton">
                                 <i class="fas fa-exchange-alt me-2"></i>Transfer
                             </button>
                         </div>
@@ -50,4 +50,206 @@
         </div>
     </div>
 </div>
-{% endblock %} 
+
+<!-- PIN Verification Modal -->
+<div class="modal fade" id="pinModal" tabindex="-1" aria-labelledby="pinModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pinModalLabel">Verify Your Identity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please enter your 4-6 digit PIN to confirm this transaction</p>
+                <div class="mb-3">
+                    <input type="password" class="form-control form-control-lg text-center" 
+                           id="pinInput" name="modal_pin" maxlength="6" pattern="\d{4,6}" 
+                           autocomplete="current-pin" placeholder="Enter PIN" required>
+                    <div class="invalid-feedback">
+                        Please enter a valid 4-6 digit PIN
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('settings') }}" class="btn btn-link">Forgot PIN?</a>
+                    <button type="button" class="btn btn-primary" id="verifyPinBtn">
+                        Verify & Transfer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    let transferFormData = null;
+    const pinModal = new bootstrap.Modal(document.getElementById('pinModal'));
+    
+    // Handle form submission
+    $('#transferForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const $form = $(this);
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalBtnText = $submitBtn.html();
+        
+        // Disable submit button and show loading state
+        $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        
+        // Store form data for later submission
+        transferFormData = $form.serialize();
+        
+        // Check if PIN verification is required
+        $.ajax({
+            url: '{{ url_for("transfer") }}',
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                if (response.require_pin) {
+                    // Show PIN modal if PIN verification is required
+                    $submitBtn.prop('disabled', false).html(originalBtnText); // Re-enable button
+                    pinModal.show();
+                } else if (response.success) {
+                    // If no PIN verification needed, submit the form directly
+                    submitTransferForm();
+                } else {
+                    showToast('error', 'Error', response.message || 'An error occurred. Please try again.');
+                    $submitBtn.prop('disabled', false).html(originalBtnText);
+                }
+            },
+            error: function(xhr) {
+                $submitBtn.prop('disabled', false).html(originalBtnText);
+                if (xhr.status === 401) {
+                    window.location.href = '{{ url_for("login") }}?next=' + encodeURIComponent(window.location.pathname);
+                } else {
+                    const errorMsg = xhr.responseJSON?.message || 'Unable to verify PIN status. Please try again.';
+                    showToast('error', 'Error', errorMsg);
+                }
+            }
+        });
+    });
+    
+    function submitTransferForm() {
+        const $form = $('#transferForm');
+        const $submitBtn = $form.find('button[type="submit"]');
+        const originalBtnText = $submitBtn.html();
+        
+        $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...');
+        
+        // Submit the form
+        $.ajax({
+            url: '{{ url_for("transfer") }}',
+            method: 'POST',
+            data: $form.serialize(),
+            success: function() {
+                window.location.href = '{{ url_for("dashboard") }}';
+            },
+            error: function(xhr) {
+                $submitBtn.prop('disabled', false).html(originalBtnText);
+                if (xhr.status === 401) {
+                    window.location.href = '{{ url_for("login") }}?next=' + encodeURIComponent(window.location.pathname);
+                } else {
+                    const errorMsg = xhr.responseJSON?.message || 'Transfer failed. Please try again.';
+                    showToast('error', 'Error', errorMsg);
+                }
+            }
+        });
+    }
+    
+    // Handle PIN verification
+    $('#verifyPinBtn').on('click', function() {
+        console.log("PIN verification button clicked");  // Debug log
+        
+        const pin = $('#pinInput').val();
+        console.log("PIN entered:", pin);  // Debug log
+        
+        if (!/^\d{4,6}$/.test(pin)) {
+            console.log("Invalid PIN format");  // Debug log
+            $('#pinInput').addClass('is-invalid');
+            return;
+        }
+        
+        const $btn = $(this);
+        const $originalText = $btn.html();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...');
+        
+        // Verify PIN
+        const pinData = { 
+            pin: pin,
+            next: '{{ url_for("transfer") }}'  // Ensure we return to transfer after verification
+        };
+        
+        console.log("Sending PIN verification request:", pinData);  // Debug log
+        
+        $.ajax({
+            url: '{{ url_for("verify_pin") }}',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(pinData),
+            success: function(response, status, xhr) {
+                console.log("PIN verification response:", response);  // Debug log
+                console.log("Status:", status);  // Debug log
+                console.log("XHR:", xhr);  // Debug log
+                
+                if (response && response.success) {
+                    console.log("PIN verification successful, submitting form");  // Debug log
+                    // PIN verified, submit the form
+                    pinModal.hide();
+                    // Add a small delay to ensure the modal is fully hidden
+                    setTimeout(() => {
+                        submitTransferForm();
+                    }, 300);
+                } else {
+                    const errorMsg = response && response.message ? response.message : 'Invalid PIN. Please try again.';
+                    console.log("PIN verification failed:", errorMsg);  // Debug log
+                    showToast('error', 'Error', errorMsg);
+                    $btn.prop('disabled', false).html($originalText);
+                    // Clear the PIN input on error
+                    $('#pinInput').val('').focus();
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("PIN verification error:", error);  // Debug log
+                console.error("Status:", status);  // Debug log
+                console.error("XHR:", xhr);  // Debug log
+                
+                $btn.prop('disabled', false).html($originalText);
+                
+                if (xhr.status === 401) {
+                    console.log("Session expired, redirecting to login");  // Debug log
+                    // If session expired, redirect to login
+                    window.location.href = '{{ url_for("login") }}?next=' + encodeURIComponent(window.location.pathname);
+                } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                    // Show server error message if available
+                    console.log("Server error:", xhr.responseJSON.message);  // Debug log
+                    showToast('error', 'Error', xhr.responseJSON.message);
+                } else {
+                    console.log("Unknown error during PIN verification");  // Debug log
+                    showToast('error', 'Error', 'Failed to verify PIN. Please check your connection and try again.');
+                }
+                // Clear the PIN input on error
+                $('#pinInput').val('').focus();
+            }
+        });
+    });
+    
+    // Reset PIN input when modal is hidden
+    $('#pinModal').on('hidden.bs.modal', function () {
+        $('#pinInput').val('').removeClass('is-invalid');
+        $('#verifyPinBtn').prop('disabled', false).html('Verify & Transfer');
+    });
+    
+    // Allow only numbers in PIN input
+    $('#pinInput').on('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+        $(this).removeClass('is-invalid');
+    });
+});
+</script>
+{% endblock %}

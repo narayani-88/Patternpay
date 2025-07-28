@@ -266,61 +266,50 @@
         </div>
     </div>
 
-    <!-- Bootstrap JS Bundle with Popper -->
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Socket.IO -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.min.js"></script>
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/js/toastr.min.js"></script>
     
     <script>
-        // Initialize toastr
+        // Configure Toastr options
         toastr.options = {
             "closeButton": true,
             "progressBar": true,
             "positionClass": "toast-top-right",
-            "timeOut": "5000"
+            "timeOut": 5000
         };
 
-        // Connect to Socket.IO
-        const socket = io();
-        
-        // Join user's room if socket_room is available
-        {% if session.socket_room %}
-        socket.on('connect', function() {
-            socket.emit('join', {room: '{{ session.socket_room }}'});
-        });
-
-        // Handle balance updates
-        socket.on('balance_update', function(data) {
-            // Update the balance in the UI
-            const balanceElement = document.querySelector(`.account-balance[data-account='${data.account_number}']`);
-            if (balanceElement) {
-                balanceElement.textContent = '₹' + data.new_balance.toLocaleString('en-IN');
+        // Show toast notification
+        function showToast(type, title, message) {
+            switch(type) {
+                case 'success':
+                    toastr.success(message, title);
+                    break;
+                case 'error':
+                    toastr.error(message, title);
+                    break;
+                case 'warning':
+                    toastr.warning(message, title);
+                    break;
+                case 'info':
+                default:
+                    toastr.info(message, title);
             }
-            
-            // Update total balance if it exists
-            const totalBalanceElement = document.getElementById('total-balance');
-            if (totalBalanceElement) {
-                // You might want to recalculate the total balance here
-                // or update it based on the received data
-                location.reload(); // Simple solution for now
-            }
-        });
-
-        // Handle new transaction notifications
-        socket.on('new_transaction', function(data) {
-            toastr.info(data.message, 'New Transaction', {timeOut: 10000});
-            
-            // Refresh transactions list if on dashboard
-            if (window.location.pathname === '/dashboard') {
-                // You might want to implement a more efficient update here
-                location.reload();
-            }
-        });
-        {% endif %}
+        }
     </script>
     {% block extra_js %}{% endblock %}
+    
+    <!-- Socket.IO configuration -->
+    <div id="socket-config" data-socket-room="{% if session.user_id and session.socket_room %}{{ session.socket_room|tojson|safe }}{% endif %}" style="display: none;"></div>
+    
+    <!-- Include Socket.IO handler -->
+    <script src="{{ url_for('static', filename='js/socket-handler.js') }}"></script>
+    
     <script>
         // Auto-hide flash messages after 5 seconds
         setTimeout(function() {
