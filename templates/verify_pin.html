@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">Verify Your Identity</h4>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-4">Please enter your 4-6 digit PIN to confirm this transaction</p>
+                    
+                    <form id="verifyPinForm" method="POST" action="{{ url_for('verify_pin') }}">
+                        <div class="mb-3">
+                            <label for="pin" class="form-label">Enter PIN</label>
+                            <input type="password" class="form-control form-control-lg text-center" 
+                                   id="pin" name="pin" maxlength="6" pattern="\d{4,6}" 
+                                   title="Please enter 4-6 digits" required>
+                            <div class="invalid-feedback">
+                                Please enter a valid 4-6 digit PIN
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Verify & Continue
+                            </button>
+                            <a href="{{ url_for('reset_pin') }}" class="btn btn-link">
+                                Forgot PIN?
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+$(document).ready(function() {
+    // Check if we have a next URL to redirect to after verification
+    const urlParams = new URLSearchParams(window.location.search);
+    const nextUrl = urlParams.get('next');
+    
+    // Handle PIN verification form submission
+    $('#verifyPinForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const pin = $('#pin').val();
+        if (!/^\d{4,6}$/.test(pin)) {
+            showToast('error', 'Invalid PIN', 'Please enter a valid 4-6 digit PIN');
+            return;
+        }
+        
+        // Show loading state
+        const $submitBtn = $(this).find('button[type="submit"]');
+        const originalText = $submitBtn.html();
+        $submitBtn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Verifying...');
+        
+        // Submit via AJAX
+        $.ajax({
+            url: '{{ url_for("verify_pin") }}' + (nextUrl ? '?next=' + encodeURIComponent(nextUrl) : ''),
+            method: 'POST',
+            contentType: 'application/x-www-form-urlencoded',
+            data: $(this).serialize(),
+            success: function(response) {
+                if (response && response.redirect) {
+                    window.location.href = response.redirect;
+                } else if (nextUrl) {
+                    window.location.href = nextUrl;
+                } else {
+                    window.location.href = '{{ url_for("dashboard") }}';
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'Failed to verify PIN. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                showToast('error', 'Error', errorMessage);
+                $submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -2,56 +2,253 @@
 
 {% block title %}UPI Payment - PatternPay{% endblock %}
 
+{% block extra_css %}
+<style>
+    :root {
+        --primary-color: #4285F4;
+        --primary-hover: #3367D6;
+        --success-color: #0F9D58;
+        --danger-color: #DB4437;
+        --text-primary: #202124;
+        --text-secondary: #5F6368;
+        --border-color: #DADCE0;
+        --bg-light: #F8F9FA;
+        --transition: all 0.3s ease;
+    }
+    
+    body {
+        background-color: #F5F7FA;
+    }
+    
+    /* Card Styles */
+    .card {
+        border: none;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: var(--transition);
+    }
+    
+    .card:hover {
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, #4285F4, #34A853);
+        border: none;
+    }
+    
+    /* Payment Icon */
+    .payment-icon-container {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    /* Form Styles */
+    .form-floating > .form-control {
+        padding: 1rem 1rem;
+        height: calc(3.5rem + 2px);
+    }
+    
+    .form-floating > label {
+        padding: 1rem 1rem;
+        color: var(--text-secondary);
+    }
+    
+    .form-control:focus, .form-control:focus ~ label {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(66, 133, 244, 0.25);
+    }
+    
+    /* GPay Button */
+    .gpay-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #000000;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 500;
+        text-decoration: none;
+        transition: var(--transition);
+        box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
+    }
+    
+    .gpay-button:hover {
+        background: #3C4043;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+    
+    .gpay-logo {
+        height: 24px;
+        margin-right: 12px;
+    }
+    
+    /* Divider */
+    .divider {
+        display: flex;
+        align-items: center;
+        text-align: center;
+        color: var(--text-secondary);
+        margin: 1.5rem 0;
+    }
+    
+    .divider::before,
+    .divider::after {
+        content: '';
+        flex: 1;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .divider:not(:empty)::before {
+        margin-right: 1rem;
+    }
+    
+    .divider:not(:empty)::after {
+        margin-left: 1rem;
+    }
+    
+    /* Transaction List */
+    .list-group-item {
+        border: 1px solid var(--border-color);
+        margin-bottom: 0.5rem;
+        border-radius: 8px !important;
+        transition: var(--transition);
+    }
+    
+    .list-group-item:hover {
+        background-color: var(--bg-light);
+    }
+    
+    /* Responsive Adjustments */
+    @media (max-width: 576px) {
+        .container {
+            padding: 1rem;
+        }
+        
+        .card {
+            border-radius: 0;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
+<div class="container py-4">
     <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white d-flex align-items-center">
-                    <i class="fas fa-mobile-alt me-2"></i>
-                    <span>UPI Payment</span>
+        <div class="col-lg-5 col-md-7">
+            <!-- Payment Card -->
+            <div class="card shadow-sm border-0">
+                <!-- Card Header -->
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <div class="d-flex align-items-center">
+                        <div class="payment-icon-container bg-white rounded-circle p-2 me-3">
+                            <i class="fas fa-rupee-sign text-primary"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-0">Make a Payment</h5>
+                            <small class="opacity-75">Secure UPI Transaction</small>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
+                
+                <!-- Card Body -->
+                <div class="card-body p-4">
                     <!-- GPay Button -->
                     <div class="text-center mb-4">
-                        <a href="{{ url_for('mock_gpay') }}" class="btn btn-outline-primary btn-lg w-100 mb-3 d-flex align-items-center justify-content-center" style="border: 2px solid #1a73e8; color: #1a73e8; font-weight: 500; padding: 12px; border-radius: 8px;">
-                            <img src="https://www.gstatic.com/instantbuy/svg/dark_gpay.svg" alt="GPay" style="height: 24px; margin-right: 12px;">
+                        <a href="{{ url_for('mock_gpay') }}" class="gpay-button w-100 mb-3">
+                            <img src="https://www.gstatic.com/instantbuy/svg/dark_gpay.svg" alt="GPay" class="gpay-logo">
                             <span>Pay with Google Pay</span>
                         </a>
-                        <div class="divider my-4 d-flex align-items-center">
-                            <div class="border-top flex-grow-1"></div>
-                            <span class="px-3 text-muted">OR</span>
-                            <div class="border-top flex-grow-1"></div>
+                        <div class="divider my-4">
+                            <span>OR</span>
                         </div>
                     </div>
 
-                    <!-- Standard UPI Form -->
-                    <form method="POST" action="{{ url_for('upi_payment') }}">
-                        <div class="mb-3">
-                            <label for="upi_id" class="form-label">UPI ID</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-at"></i></span>
-                                <input type="text" class="form-control" id="upi_id" name="upi_id" 
-                                       placeholder="name@bank" required>
-                            </div>
-                            <div class="form-text">Enter a valid UPI ID (e.g., name@bank)</div>
-                        </div>
+                    <!-- UPI Payment Form -->
+                    <form id="upiPaymentForm" onsubmit="handleUPIPayment(event)" class="needs-validation" novalidate>
+                        <div id="alertContainer"></div>
                         
-                        <div class="mb-3">
-                            <label for="amount" class="form-label">Amount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₹</span>
-                                <input type="number" class="form-control" id="amount" name="amount" 
-                                       placeholder="0.00" step="0.01" min="0.01" required>
+                        <!-- Recipient UPI ID -->
+                        <div class="form-floating mb-4">
+                            <input type="text" class="form-control form-control-lg" id="upi_id" name="upi_id" 
+                                   placeholder="name@bank" pattern="[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}" required>
+                            <label for="upi_id">Recipient UPI ID</label>
+                            <div class="invalid-feedback">
+                                Please enter a valid UPI ID (e.g., name@bank)
                             </div>
                         </div>
                         
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane me-2"></i>Send Payment
+                        <!-- Amount -->
+                        <div class="form-floating mb-4">
+                            <input type="number" class="form-control form-control-lg" id="amount" name="amount" 
+                                   placeholder="0.00" step="0.01" min="1" required>
+                            <label for="amount">Amount (₹)</label>
+                            <div class="invalid-feedback">
+                                Please enter an amount greater than ₹1
+                            </div>
+                        </div>
+                        
+                        <!-- Purpose (Optional) -->
+                        <div class="form-floating mb-4">
+                            <input type="text" class="form-control form-control-lg" id="purpose" name="purpose" 
+                                   placeholder="Add a note (optional)">
+                            <label for="purpose">Purpose (Optional)</label>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                                <span class="spinner-border spinner-border-sm d-none" id="spinner" role="status" aria-hidden="true"></span>
+                                <span id="buttonText">
+                                    <i class="fas fa-paper-plane me-2"></i>Send Payment
+                                </span>
                             </button>
                         </div>
                     </form>
+                </div>
+                
+                <!-- Card Footer -->
+                <div class="card-footer bg-light text-center py-3">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <i class="fas fa-lock me-2 text-muted"></i>
+                        <small class="text-muted">Secure & Encrypted Payment</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Transactions (Collapsible) -->
+            <div class="mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0">Recent Transactions</h6>
+                    <a href="{{ url_for('transactions') }}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="list-group">
+                    {% for tx in recent_transactions[:3] %}
+                    <div class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-1">{{ tx.description or 'UPI Payment' }}</h6>
+                                <small class="text-muted">{{ tx.timestamp.strftime('%d %b, %I:%M %p') }}</small>
+                            </div>
+                            <span class="badge bg-{{ 'success' if tx.amount > 0 else 'danger' }} rounded-pill">
+                                {{ '+' if tx.amount > 0 else '' }}₹{{ "%.2f"|format(tx.amount|abs) }}
+                            </span>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-3 text-muted">
+                        <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+                        <p class="mb-0">No recent transactions</p>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
@@ -156,6 +353,218 @@
     .gpay-button {
         max-width: 100%;
     }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('upiPaymentForm');
+    const upiInput = document.getElementById('upi_id');
+    const amountInput = document.getElementById('amount');
+    const purposeInput = document.getElementById('purpose');
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+    const buttonText = document.getElementById('buttonText');
+    const alertContainer = document.getElementById('alertContainer');
+    
+    // Add input validation
+    upiInput.addEventListener('input', function() {
+        validateUPI(this);
+    });
+    
+    amountInput.addEventListener('input', function() {
+        validateAmount(this);
+    });
+    
+    // Form submission handler
+    form.addEventListener('submit', handleUPIPayment);
+    
+    // Validate form before submission
+    function validateForm() {
+        const isUPIValid = validateUPI(upiInput);
+        const isAmountValid = validateAmount(amountInput);
+        return isUPIValid && isAmountValid;
+    }
+    
+    // UPI ID validation
+    function validateUPI(input) {
+        const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z]{2,}$/;
+        const isValid = upiRegex.test(input.value);
+        
+        if (input.value === '') {
+            setValid(input, false);
+            return false;
+        }
+        
+        setValid(input, isValid);
+        return isValid;
+    }
+    
+    // Amount validation
+    function validateAmount(input) {
+        const amount = parseFloat(input.value);
+        const isValid = !isNaN(amount) && amount > 0;
+        
+        if (input.value === '') {
+            setValid(input, false);
+            return false;
+        }
+        
+        setValid(input, isValid);
+        return isValid;
+    }
+    
+    // Set input validation state
+    function setValid(input, isValid) {
+        if (isValid) {
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+        } else {
+            input.classList.remove('is-valid');
+            if (input.value !== '') {
+                input.classList.add('is-invalid');
+            }
+        }
+    }
+    
+    // Handle UPI payment
+    async function handleUPIPayment(event) {
+        event.preventDefault();
+        
+        if (!validateForm()) {
+            showAlert('warning', 'Please fill in all required fields correctly.', alertContainer);
+            return;
+        }
+        
+        const formData = new FormData(form);
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        spinner.classList.remove('d-none');
+        buttonText.innerHTML = 'Processing...';
+        
+        try {
+            const response = await fetch('{{ url_for("upi_payment") }}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showAlert('success', data.message, alertContainer);
+                form.reset();
+                
+                // Add success animation
+                submitBtn.classList.add('btn-success');
+                setTimeout(() => {
+                    submitBtn.classList.remove('btn-success');
+                    window.location.href = '{{ url_for("dashboard") }}';
+                }, 1500);
+            } else {
+                throw new Error(data.message || 'Payment failed');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', error.message || 'An error occurred. Please try again.', alertContainer);
+            
+            // Add error animation
+            submitBtn.classList.add('btn-danger');
+            setTimeout(() => {
+                submitBtn.classList.remove('btn-danger');
+            }, 1000);
+        } finally {
+            // Reset button state
+            submitBtn.disabled = false;
+            spinner.classList.add('d-none');
+            buttonText.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Send Payment';
+        }
+    }
+    
+    // Show alert message
+    function showAlert(type, message, container) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            <div class="d-flex align-items-center">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
+                <span>${message}</span>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Add animation
+        alertDiv.style.animation = 'fadeIn 0.3s ease-in-out';
+        
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.style.animation = 'fadeOut 0.3s ease-in-out';
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 300);
+        }, 5000);
+    }
+    
+    // Add keypress animation
+    [upiInput, amountInput, purposeInput].forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentElement.classList.add('focused');
+        });
+        
+        input.addEventListener('blur', function() {
+            this.parentElement.classList.remove('focused');
+        });
+    });
+});
+</script>
+
+<style>
+/* Animation for alerts */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Form input focus effects */
+.form-floating.focused label {
+    color: var(--primary-color);
+}
+
+/* Validation states */
+.is-valid {
+    border-color: var(--success-color) !important;
+    background-image: none;
+}
+
+.is-invalid {
+    border-color: var(--danger-color) !important;
+    background-image: none;
+}
+
+/* Button states */
+.btn-success {
+    background-color: var(--success-color) !important;
+    border-color: var(--success-color) !important;
+}
+
+.btn-danger {
+    background-color: var(--danger-color) !important;
+    border-color: var(--danger-color) !important;
 }
 </style>
 {% endblock %}

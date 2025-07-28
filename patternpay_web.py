@@ -7,19 +7,28 @@ from flask import (
 )
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.datastructures import ImmutableMultiDict
 from datetime import datetime
 from bson.objectid import ObjectId
 import random
 import os
+import json
 
 # Local helper that exposes users_col, accounts_col, transactions_col
-from db import users_col, accounts_col, transactions_col, client  # type: ignore
+from db import users_col, accounts_col, transactions_col, client, _db_name  # type: ignore
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'patternpay-secret')
 
-# Initialize SocketIO
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Initialize SocketIO with CORS and additional configuration
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    logger=True,
+    engineio_logger=True,
+    ping_timeout=60,
+    ping_interval=25
+)
 
 # ---------------------------------------------------------------------------
 # Utility helpers
@@ -138,13 +147,35 @@ def dashboard():
     
     user_accounts = list(accounts_col.find({'user_id': ObjectId(session['user_id'])}))
     
-    # Get recent transactions
-    recent_transactions = list(transactions_col.find({
+    # Get recent transactions for all accounts
+    account_numbers = [acc['account_number'] for acc in user_accounts]
+    recent_transactions = []
+    
+    # Get transactions where the user is either sender or receiver
+    transactions_cursor = transactions_col.find({
         '$or': [
-            {'from_account': {'$in': [acc['account_number'] for acc in user_accounts]}},
-            {'to_account': {'$in': [acc['account_number'] for acc in user_accounts]}}
+            {'from_account': {'$in': account_numbers}},
+            {'to_account': {'$in': account_numbers}}
         ]
-    }).sort('timestamp', -1).limit(5))
+    }).sort('timestamp', -1).limit(5)
+    
+    # Convert cursor to list and add transaction type and sign
+    for tx in transactions_cursor:
+        tx['_id'] = str(tx['_id'])  # Convert ObjectId to string for JSON serialization
+        if tx['from_account'] in account_numbers:
+            tx['transaction_type'] = 'Debit'
+            tx['amount'] = -tx['amount']
+        else:
+            tx['transaction_type'] = 'Credit'
+        recent_transactions.append(tx)
+    
+    # Check which accounts have transactions
+    accounts_with_transactions = set()
+    for tx in recent_transactions:
+        if 'from_account' in tx and tx['from_account'] in account_numbers:
+            accounts_with_transactions.add(tx['from_account'])
+        if 'to_account' in tx and tx['to_account'] in account_numbers:
+            accounts_with_transactions.add(tx['to_account'])
     
     # Store user's socket room in session
     if 'socket_room' not in session:
@@ -152,12 +183,22 @@ def dashboard():
     
     total_balance = sum(acc['balance'] for acc in user_accounts)
     
+    # Get last transaction date for each account
+    account_last_dates = {}
+    for tx in recent_transactions:
+        for acc_field in ['from_account', 'to_account']:
+            acc_num = tx.get(acc_field)
+            if acc_num in account_numbers and acc_num not in account_last_dates:
+                account_last_dates[acc_num] = tx.get('timestamp')
+    
     return render_template('dashboard.html', 
                          user=user, 
                          accounts=user_accounts,
                          transactions=recent_transactions,
                          socket_room=session['socket_room'],
-                         total_balance=total_balance)
+                         total_balance=total_balance,
+                         account_last_dates=account_last_dates,
+                         accounts_with_transactions=accounts_with_transactions)
 
 
 @app.route('/delete_account/<account_number>', methods=['POST'])
@@ -218,18 +259,151 @@ def add_account():
     return render_template('add_account.html')
 
 
-@app.route('/transfer', methods=['GET', 'POST'])
-def transfer():
+@app.route('/verify_pin', methods=['GET', 'POST'])
+def verify_pin():
+    print("\n=== PIN Verification Start ===")  # Debug log
+    print(f"Method: {request.method}")  # Debug log
+    print(f"Headers: {dict(request.headers)}")  # Debug log
+    print(f"Session data: {dict(session)}")  # Debug log
+    
+    # Check if user is logged in
     if 'user_id' not in session:
+        print("User not in session")  # Debug log
+        if request.is_json or request.content_type == 'application/json':
+            return jsonify({'success': False, 'message': 'Please log in'}), 401
+        flash('Please log in to continue', 'warning')
         return redirect(url_for('login'))
     
+    # Get user from database
+    user = users_col.find_one({'_id': ObjectId(session['user_id'])})
+    if not user:
+        print(f"User {session['user_id']} not found in database")  # Debug log
+        if request.is_json or request.content_type == 'application/json':
+            return jsonify({'success': False, 'message': 'User not found'}), 404
+        flash('User not found', 'error')
+        return redirect(url_for('login'))
+    
+    # Handle AJAX requests
+    if request.is_json or request.content_type == 'application/json':
+        print("Processing JSON request")  # Debug log
+        if request.method == 'POST':
+            try:
+                data = request.get_json()
+                print(f"Received data: {data}")  # Debug log
+                
+                pin = data.get('pin')
+                next_url = data.get('next') or request.args.get('next') or url_for('dashboard')
+                
+                print(f"PIN received: {pin}")  # Debug log
+                print(f"Next URL: {next_url}")  # Debug log
+                
+                if not pin or not str(pin).isdigit() or len(str(pin)) < 4 or len(str(pin)) > 6:
+                    print("Invalid PIN format")  # Debug log
+                    return jsonify({'success': False, 'message': 'Invalid PIN format'}), 400
+                
+                # Verify PIN (in a real app, this would be hashed and compared)
+                user_pin = str(user.get('pin', ''))
+                print(f"User PIN: {user_pin}, Provided PIN: {pin}")  # Debug log
+                
+                if str(pin) != user_pin:
+                    print("Incorrect PIN")  # Debug log
+                    return jsonify({'success': False, 'message': 'Incorrect PIN'}), 401
+                
+                # Store PIN verification in session (valid for 5 minutes)
+                session['pin_verified'] = True
+                session['pin_verified_at'] = datetime.utcnow().timestamp()
+                
+                print("PIN verification successful")  # Debug log
+                print(f"New session data: {dict(session)}")  # Debug log
+                
+                return jsonify({
+                    'success': True,
+                    'message': 'PIN verified successfully',
+                    'redirect': next_url
+                })
+                
+            except Exception as e:
+                print(f"Error in verify_pin: {str(e)}")  # Debug log
+                return jsonify({'success': False, 'message': f'Server error: {str(e)}'}), 500
+    
+    # Handle regular form submission
     if request.method == 'POST':
+        pin = request.form.get('pin')
+        if not pin or not pin.isdigit() or len(pin) < 4 or len(pin) > 6:
+            flash('Invalid PIN format', 'error')
+            return redirect(url_for('verify_pin'))
+            
+        # Verify PIN (in a real app, this would be hashed and compared)
+        if pin != user.get('pin'):
+            flash('Incorrect PIN', 'error')
+            return redirect(url_for('verify_pin'))
+        
+        # Store PIN verification in session (valid for 5 minutes)
+        session['pin_verified'] = True
+        session['pin_verified_at'] = datetime.utcnow().timestamp()
+        
+        # Redirect to the next URL or dashboard
+        next_url = request.args.get('next') or url_for('dashboard')
+        return redirect(next_url)
+    
+    # GET request - show PIN verification form
+    next_url = request.args.get('next', url_for('dashboard'))
+    return render_template('verify_pin.html', next=next_url)
+
+
+@app.route('/transfer', methods=['GET', 'POST'])
+def transfer():
+    print("Transfer route called. Method:", request.method)  # Debug log
+    
+    if 'user_id' not in session:
+        print("User not in session")  # Debug log
+        if request.is_json or request.content_type == 'application/json':
+            return jsonify({'success': False, 'message': 'Please log in'}), 401
+        return redirect(url_for('login'))
+    
+    # Handle AJAX requests for PIN verification
+    if request.method == 'GET' and (request.is_json or request.content_type == 'application/json'):
+        print("AJAX GET request received")  # Debug log
+        print("Session data:", dict(session))  # Debug log
+        
+        pin_verified = session.get('pin_verified', False)
+        pin_verified_at = session.get('pin_verified_at', 0)
+        time_since_verification = datetime.utcnow().timestamp() - pin_verified_at
+        
+        print(f"PIN verified: {pin_verified}, Verified at: {pin_verified_at}, Time since: {time_since_verification}")  # Debug log
+        
+        if not pin_verified or time_since_verification > 300:  # 5 minutes
+            print("PIN verification required")  # Debug log
+            return jsonify({
+                'success': False,
+                'require_pin': True, 
+                'redirect': url_for('verify_pin', next=url_for('transfer'))
+            })
+            
+        print("No PIN verification needed")  # Debug log
+        return jsonify({
+            'success': True,
+            'require_pin': False
+        })
+    
+    if request.method == 'POST':
+        # Get form data
         from_account = request.form.get('from_account')
         to_account = request.form.get('to_account')
-        amount = float(request.form.get('amount', 0))
-        description = request.form.get('description', '')
+        try:
+            amount = float(request.form.get('amount', 0))
+        except (ValueError, TypeError):
+            flash('Invalid amount', 'error')
+            return redirect(url_for('transfer'))
         
-        # Validate accounts and balance
+        description = request.form.get('description', 'Bank Transfer')
+        
+        # Validate input
+        if not all([from_account, to_account, amount > 0]):
+            flash('Please fill in all required fields', 'error')
+            return redirect(url_for('transfer'))
+        
+        # Get source account
         source = accounts_col.find_one({
             'account_number': from_account,
             'user_id': ObjectId(session['user_id'])
@@ -239,97 +413,180 @@ def transfer():
             flash('Source account not found', 'error')
             return redirect(url_for('transfer'))
             
+        # Check balance
         if source['balance'] < amount:
             flash('Insufficient funds', 'error')
             return redirect(url_for('transfer'))
-            
+        
+        # Get destination account
         destination = accounts_col.find_one({'account_number': to_account})
         if not destination:
             flash('Destination account not found', 'error')
             return redirect(url_for('transfer'))
         
+        # Prevent self-transfer
+        if from_account == to_account:
+            flash('Cannot transfer to the same account', 'error')
+            return redirect(url_for('transfer'))
+        
         # Start transaction
         with client.start_session() as session_client:
             with session_client.start_transaction():
-                # Update source account
-                accounts_col.update_one(
-                    {'_id': source['_id']},
-                    {'$inc': {'balance': -amount}},
-                    session=session_client
-                )
-                
-                # Update destination account
-                accounts_col.update_one(
-                    {'_id': destination['_id']},
-                    {'$inc': {'balance': amount}},
-                    session=session_client
-                )
-                
-                # Record transaction
-                transaction = {
-                    'from_account': from_account,
-                    'to_account': to_account,
-                    'amount': amount,
-                    'description': description,
-                    'timestamp': datetime.utcnow(),
-                    'status': 'completed'
-                }
-                transactions_col.insert_one(transaction, session=session_client)
-                
-                session_client.commit_transaction()
-                
-                flash('Transfer successful!', 'success')
-                
-                # Notify both sender and receiver in real-time
-                socketio.emit('balance_update', {
-                    'account_number': from_account,
-                    'new_balance': source['balance'] - amount
-                }, room=f"user_{session['user_id']}")
-                
-                if str(destination['user_id']) != session['user_id']:
-                    socketio.emit('balance_update', {
-                        'account_number': to_account,
-                        'new_balance': destination['balance'] + amount
-                    }, room=f"user_{str(destination['user_id'])}")
+                try:
+                    # Update source account
+                    accounts_col.update_one(
+                        {'_id': source['_id']},
+                        {'$inc': {'balance': -amount}},
+                        session=session_client
+                    )
                     
-                    socketio.emit('new_transaction', {
-                        'message': f'Received ₹{amount:.2f} from {source["account_number"][-4:]}',
-                        'timestamp': datetime.utcnow().isoformat()
-                    }, room=f"user_{str(destination['user_id'])}")
-                
-                return redirect(url_for('dashboard'))
+                    # Update destination account
+                    accounts_col.update_one(
+                        {'_id': destination['_id']},
+                        {'$inc': {'balance': amount}},
+                        session=session_client
+                    )
+                    
+                    # Record transaction
+                    transaction = {
+                        'from_account': from_account,
+                        'to_account': to_account,
+                        'amount': amount,
+                        'description': description,
+                        'timestamp': datetime.utcnow(),
+                        'status': 'completed',
+                        'type': 'transfer'
+                    }
+                    
+                    transactions_col.insert_one(transaction, session=session_client)
+                    
+                    # Commit the transaction
+                    session_client.commit_transaction()
+                    
+                    # Clear PIN verification after successful transfer
+                    if 'pin_verified' in session:
+                        session.pop('pin_verified')
+                    if 'pin_verified_at' in session:
+                        session.pop('pin_verified_at')
+                    
+                    # Send real-time updates
+                    socketio.emit('balance_update', {
+                        'account_number': from_account,
+                        'new_balance': source['balance'] - amount
+                    }, room=f"user_{session['user_id']}")
+                    
+                    # Notify recipient if different user
+                    if str(destination['user_id']) != session['user_id']:
+                        socketio.emit('balance_update', {
+                            'account_number': to_account,
+                            'new_balance': destination['balance'] + amount
+                        }, room=f"user_{str(destination['user_id'])}")
+                        
+                        socketio.emit('new_transaction', {
+                            'message': f'Received ₹{amount:.2f} from {source["account_number"][-4:]}',
+                            'timestamp': datetime.utcnow().isoformat()
+                        }, room=f"user_{str(destination['user_id'])}")
+                    
+                    flash(f'Successfully transferred ₹{amount:.2f} to account ending in {to_account[-4:]}', 'success')
+                    return redirect(url_for('dashboard'))
+                    
+                except Exception as e:
+                    session_client.abort_transaction()
+                    app.logger.error(f'Transfer failed: {str(e)}')
+                    flash('Transfer failed. Please try again.', 'error')
+                    return redirect(url_for('transfer'))
     
+    # GET request - show transfer form
     user_accounts = list(accounts_col.find({'user_id': ObjectId(session['user_id'])}))
     return render_template('transfer.html', accounts=user_accounts)
-
 
 @app.route('/upi_payment', methods=['GET', 'POST'])
 def upi_payment():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        upi_id = request.form['upi_id']
-        amount = float(request.form['amount'])
-
-        transactions_col.insert_one({
-            'account_number': 'UPI',
-            'transaction_type': 'UPI Payment',
-            'amount': amount,
-            'description': f'UPI payment to {upi_id}',
-            'created_at': datetime.utcnow(),
-        })
-        flash(f'UPI Payment successful! Amount: ${amount} to {upi_id}', 'success')
+        
+    user = users_col.find_one({'_id': ObjectId(session['user_id'])})
+    if not user:
+        session.clear()
+        return redirect(url_for('login'))
+        
+    # Get user's accounts
+    user_accounts = list(accounts_col.find({'user_id': ObjectId(session['user_id'])}))
+    if not user_accounts:
+        flash('No account found. Please create an account first.', 'danger')
         return redirect(url_for('dashboard'))
+        
+    account_numbers = [acc['account_number'] for acc in user_accounts]
+    
+    # Get recent transactions
+    recent_transactions = []
+    transactions_cursor = transactions_col.find({
+        'from_account': {'$in': account_numbers}
+    }).sort('timestamp', -1).limit(5)
+    
+    for tx in transactions_cursor:
+        tx['_id'] = str(tx['_id'])
+        recent_transactions.append(tx)
+    
+    if request.method == 'POST':
+        upi_id = request.form.get('upi_id')
+        amount = float(request.form.get('amount', 0))
+        purpose = request.form.get('purpose', 'UPI Payment')
+        
+        # Get user's primary account (or first account if no primary)
+        user_account = next((acc for acc in user_accounts if acc.get('is_primary', False)), user_accounts[0])
+        
+        # Validate balance
+        if user_account['balance'] < amount:
+            return jsonify({'success': False, 'message': 'Insufficient balance'}), 400
+            
+        # Deduct amount
+        new_balance = user_account['balance'] - amount
+        accounts_col.update_one(
+            {'_id': user_account['_id']},
+            {'$set': {'balance': new_balance}}
+        )
+        
+        # Record transaction
+        transaction = {
+            'from_account': user_account['account_number'],
+            'to_upi': upi_id,
+            'amount': amount,
+            'type': 'debit',
+            'description': purpose,
+            'timestamp': datetime.utcnow(),
+            'status': 'completed'
+        }
+        transactions_col.insert_one(transaction)
+        
+        # Add to recent transactions
+        transaction['_id'] = str(transaction['_id'])
+        recent_transactions.insert(0, transaction)
+        if len(recent_transactions) > 5:
+            recent_transactions = recent_transactions[:5]
+        
+        # Emit balance update
+        socketio.emit('balance_update', {
+            'account_number': user_account['account_number'],
+            'new_balance': new_balance
+        }, room=f"user_{session['user_id']}")
+        
+        flash(f'UPI Payment successful! Amount: ₹{amount} to {upi_id}', 'success')
+        return jsonify({
+            'success': True,
+            'message': f'UPI Payment successful! Amount: ₹{amount} to {upi_id}',
+            'new_balance': new_balance
+        })
 
-    return render_template('upi_payment.html')
-
+    return render_template('upi_payment.html', 
+                         recent_transactions=recent_transactions,
+                         user=user)
 
 @app.route('/transactions')
 def transactions():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-
+        
     user_id = ObjectId(session['user_id'])
     account_numbers = [acc['account_number'] for acc in accounts_col.find({'user_id': user_id})]
     txns = list(transactions_col.find({'account_number': {'$in': account_numbers}}).sort('created_at', -1))
@@ -362,7 +619,9 @@ def ifsc():
 def settings():
     if 'user_id' not in session:
         return redirect(url_for('login'))
-    return render_template('settings.html')
+    user = users_col.find_one({'_id': ObjectId(session['user_id'])})
+    has_pin = 'pin_hash' in user if user else False
+    return render_template('settings.html', has_pin=has_pin)
 
 @app.route('/set_pin', methods=['POST'])
 def set_pin():
@@ -434,6 +693,26 @@ def mock_gpay():
             return jsonify({'success': False, 'error': 'Please log in first'}), 401
         return redirect(url_for('login'))
     
+    # Check if PIN verification is required and valid
+    if 'pin_verified' not in session or (datetime.utcnow().timestamp() - session.get('pin_verified_at', 0)) > 300:
+        if request.method == 'POST' and request.is_json and request.json.get('verify_pin'):
+            # Handle PIN verification from AJAX
+            return verify_pin()
+        elif request.method == 'POST':
+            # Store the payment data in session to process after PIN verification
+            session['pending_payment'] = {
+                'upi_id': request.form.get('upi_id', '').strip(),
+                'amount': request.form.get('amount', '').strip(),
+                'purpose': request.form.get('purpose', '').strip(),
+                'is_ajax': request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            }
+            return jsonify({'require_pin': True})
+        elif 'pending_payment' in session and request.method == 'GET':
+            # If we have a pending payment, show the PIN verification
+            return render_template('verify_pin.html',
+                                redirect_url=url_for('mock_gpay'),
+                                post_url=url_for('verify_pin'))
+    
     # Get current user
     current_user = users_col.find_one({'username': session['username']})
     if not current_user:
@@ -441,6 +720,22 @@ def mock_gpay():
             return jsonify({'success': False, 'error': 'User not found'}), 404
         flash('User not found', 'error')
         return redirect(url_for('login'))
+    
+    # If we have a pending payment and PIN is verified, process it
+    if 'pending_payment' in session and request.method != 'POST':
+        payment_data = session.pop('pending_payment')
+        request.form = ImmutableMultiDict([
+            ('upi_id', payment_data['upi_id']),
+            ('amount', payment_data['amount']),
+            ('purpose', payment_data['purpose'])
+        ])
+        if payment_data['is_ajax']:
+            request._cached_data = json.dumps({
+                'upi_id': payment_data['upi_id'],
+                'amount': payment_data['amount'],
+                'purpose': payment_data['purpose']
+            })
+            request._parsed_content_type = ['application/json']
     
     # Get all users except current user for the recipients list
     all_users = list(users_col.find({'_id': {'$ne': current_user['_id']}}))
@@ -604,11 +899,48 @@ def mock_gpay():
     # For GET requests, render the form
     if request.is_json:
         return jsonify({'success': False, 'error': 'Invalid request method'}), 400
-        
+    
+    # Debug: List all collections in the database
+    print("\n=== Database Collections ===")
+    collections = client[_db_name].list_collection_names()
+    print(f"Available collections: {collections}")
+    
+    # Debug: Count documents in each collection
+    for coll_name in collections:
+        try:
+            count = client[_db_name][coll_name].count_documents({})
+            print(f"Collection '{coll_name}': {count} documents")
+        except Exception as e:
+            print(f"Error counting documents in {coll_name}: {e}")
+    
+    # Get all users except the current user for the recipients list
+    all_users = list(users_col.find(
+        {'_id': {'$ne': current_user['_id']}},
+        {'username': 1, 'email': 1, 'full_name': 1, '_id': 1}  # Include _id for debugging
+    ))
+    
+    # Debug logging
+    print(f"\n=== Current User ===")
+    print(f"Username: {current_user.get('username')}")
+    print(f"User ID: {current_user.get('_id')}")
+    print(f"Email: {current_user.get('email', 'N/A')}")
+    
+    print(f"\n=== Found {len(all_users)} other users in the database ===")
+    for idx, user in enumerate(all_users, 1):
+        print(f"{idx}. ID: {user.get('_id')}")
+        print(f"   Username: {user.get('username')}")
+        print(f"   Email: {user.get('email', 'N/A')}")
+        print(f"   Full Name: {user.get('full_name', 'N/A')}")
+    
+    # For GET requests, render the form with users
+    upi_id = request.args.get('upi_id', '')
+    amount = request.args.get('amount', '')
+    
     return render_template('gpay_payment.html',
-                         upi_id=request.args.get('upi_id', ''),
-                         amount=request.args.get('amount', ''),
+                         upi_id=upi_id,
+                         amount=amount,
                          users=all_users)
+    
 
 @app.route('/faq')
 def faq():
@@ -622,17 +954,62 @@ def help_page():
 # SocketIO event handlers
 @socketio.on('connect')
 def handle_connect():
-    if 'user_id' in session:
-        room = f"user_{session['user_id']}"
-        join_room(room)
-        print(f"Client connected to room: {room}")
+    try:
+        print(f"New client connected: {request.sid}")
+        if 'user_id' in session:
+            room = f"user_{session['user_id']}"
+            join_room(room)
+            print(f"Client {request.sid} joined room: {room}")
+            return {'status': 'success', 'room': room}
+        else:
+            print("Unauthenticated connection attempt")
+            return False  # Reject the connection if user is not authenticated
+    except Exception as e:
+        print(f"Error in handle_connect: {str(e)}")
+        return False
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    if 'user_id' in session:
-        room = f"user_{session['user_id']}"
-        leave_room(room)
-        print(f"Client disconnected from room: {room}")
+    try:
+        print(f"Client disconnected: {request.sid}")
+        if 'user_id' in session:
+            room = f"user_{session['user_id']}"
+            leave_room(room)
+            print(f"Client {request.sid} left room: {room}")
+    except Exception as e:
+        print(f"Error in handle_disconnect: {str(e)}")
+
+# Handle join room events from the client
+@socketio.on('join')
+def on_join(data):
+    try:
+        if 'user_id' in session and 'room' in data:
+            room = data['room']
+            join_room(room)
+            print(f"Client {request.sid} joined room: {room}")
+            return {'status': 'success', 'room': room}
+        return {'status': 'error', 'message': 'Unauthorized'}
+    except Exception as e:
+        print(f"Error in on_join: {str(e)}")
+        return {'status': 'error', 'message': str(e)}
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')
+    try:
+        port = int(os.environ.get('PORT', 5001))
+        print(f"Starting PatternPay server on port {port}")
+        print("Available on:")
+        print(f"- http://localhost:{port}")
+        print(f"- http://127.0.0.1:{port}")
+        print("Press Ctrl+C to stop the server")
+        
+        # Run with Socket.IO support
+        socketio.run(app, host='127.0.0.1', port=port, debug=True, use_reloader=True)
+        
+    except Exception as e:
+        print(f"\nError starting server: {e}")
+        print("\nTroubleshooting steps:")
+        print(f"1. Make sure port {port} is not in use by another application")
+        print("2. Try a different port number")
+        print("3. Check your firewall settings")
+        print("\nYou can specify a different port by running:")
+        print(f"  set PORT=5050 && python patternpay_web.py")

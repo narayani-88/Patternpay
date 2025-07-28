@@ -65,11 +65,40 @@
 {% endblock %}
 
 {% block content %}
+<!-- PIN Verification Modal -->
+<div class="modal fade" id="pinModal" tabindex="-1" aria-labelledby="pinModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pinModalLabel">Verify Your Identity</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Please enter your 4-6 digit PIN to confirm this transaction</p>
+                <div class="mb-3">
+                    <input type="password" class="form-control form-control-lg text-center" 
+                           id="pinInput" maxlength="6" pattern="\d{4,6}" 
+                           placeholder="Enter PIN" required>
+                    <div class="invalid-feedback">
+                        Please enter a valid 4-6 digit PIN
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <a href="{{ url_for('settings') }}" class="btn btn-link">Forgot PIN?</a>
+                    <button type="button" class="btn btn-primary" id="verifyPinBtn">
+                        Verify & Pay
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="gpay-app">
     <!-- GPay Header -->
     <div class="gpay-header">
         <div class="gpay-header-content">
-            <a href="{{ url_for('upi_payment') }}" class="gpay-back-button">
+            <a href="{{ url_for('dashboard') }}" class="gpay-back-button">
                 <i class="fas fa-arrow-left"></i>
             </a>
             <div class="gpay-header-title">
@@ -114,7 +143,22 @@
                                name="upi_id" 
                                value="{{ upi_id if upi_id != 'None' else '' }}" 
                                placeholder="Enter UPI ID or select a contact"
+                               autocomplete="off"
                                required>
+                        <div class="user-list" id="userList" style="display: none;">
+                            {% for user in users %}
+                            <div class="user-item" data-upi="{{ user.email }}" data-name="{{ user.full_name if user.full_name else user.username }}">
+                                <div class="user-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ user.full_name if user.full_name else user.username }}</div>
+                                    <div class="user-upi">{{ user.email }}</div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <!-- User list will be managed by gpay.js -->
                     </div>
                     <div class="error-message" id="upiError"></div>
                 </div>
@@ -127,18 +171,7 @@
                            placeholder="e.g., Lunch, Rent, etc.">
                 </div>
 
-                <!-- User List -->
-                <div class="user-list">
-                    {% for user in users %}
-                    <div class="user-item" onclick="selectUser('{{ user.email }}', '{{ user.full_name }}')">
-                        <div class="user-avatar">{{ user.full_name[0]|upper if user.full_name else user.username[0]|upper }}</div>
-                        <div class="user-details">
-                            <div class="user-name">{{ user.full_name if user.full_name else user.username }}</div>
-                            <div class="user-upi">{{ user.email }}</div>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
+                <!-- User List is now handled by the dropdown above -->
 
                 <button type="submit" class="gpay-button" id="payButton">
                     <i class="fas fa-lock"></i> Pay Securely
@@ -187,115 +220,14 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Add data attribute to store hasUsers value -->
+<div id="gpay-container" data-has-users="{{ 'true' if users|length > 0 else 'false' }}"></div>
+
+<!-- Include GPay handler -->
+<script src="{{ url_for('static', filename='js/gpay-handler.js') }}"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('gpayForm');
-    const upiInput = document.getElementById('upi_id');
-    const amountInput = document.getElementById('amount');
-    const payButton = document.getElementById('payButton');
-    const availableBalance = document.getElementById('availableBalance');
-    const upiError = document.getElementById('upiError');
-    const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-    const errorModal = new bootstrap.Modal(document.getElementById('errorModal'));
-    const successMessage = document.getElementById('successMessage');
-    const transactionDetails = document.getElementById('transactionDetails');
-    const errorMessage = document.getElementById('errorMessage');
-
-    // Handle form submission
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // Validate form
-        if (!validateForm()) {
-            return;
-        }
-
-        // Show loading state
-        const originalButtonText = payButton.innerHTML;
-        payButton.disabled = true;
-        payButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
-
-        try {
-            const formData = new FormData(form);
-            const response = await fetch(form.action, {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                // Update UI with new balance
-                if (result.data && result.data.new_balance) {
-                    availableBalance.textContent = parseFloat(result.data.new_balance).toFixed(2);
-                }
-                
-                // Show success message
-                successMessage.textContent = 'Payment Successful!';
-                transactionDetails.innerHTML = `
-                    <div class="alert alert-success">
-                        <p class="mb-1">${result.message}</p>
-                        <p class="mb-0">Your new balance: ₹${parseFloat(availableBalance.textContent).toFixed(2)}</p>
-                    </div>
-                `;
-                successModal.show();
-                
-                // Reset form
-                form.reset();
-            } else {
-                // Show error message
-                errorMessage.textContent = result.error || result.message || 'An error occurred. Please try again.';
-                errorModal.show();
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            errorMessage.textContent = 'Failed to process payment. Please try again.';
-            errorModal.show();
-        } finally {
-            // Reset button state
-            payButton.disabled = false;
-            payButton.innerHTML = originalButtonText;
-        }
-    });
-
-    // Form validation
-    function validateForm() {
-        let isValid = true;
-        
-        // Reset errors
-        upiError.textContent = '';
-        upiInput.classList.remove('is-invalid');
-        amountInput.classList.remove('is-invalid');
-        
-        // Validate UPI ID
-        if (!upiInput.value || !upiInput.value.includes('@')) {
-            upiError.textContent = 'Please enter a valid UPI ID';
-            upiInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        
-        // Validate amount
-        const amount = parseFloat(amountInput.value);
-        if (isNaN(amount) || amount <= 0) {
-            amountInput.classList.add('is-invalid');
-            isValid = false;
-        }
-        
-        return isValid;
-    }
-
-    // Function to select a user from the list
-    window.selectUser = function(upi, name) {
-        upiInput.value = upi;
-        upiError.textContent = '';
-        upiInput.classList.remove('is-invalid');
-        
-        // Optional: Focus on amount field after selecting a user
-        amountInput.focus();
-    };
-});
+    // All JavaScript has been moved to gpay-handler.js
+    // This script tag is kept for any future inline scripts if needed
 </script>
 {% endblock %}
